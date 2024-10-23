@@ -1,0 +1,112 @@
+- name: Install nginx
+  yum:
+    name: 
+      - nginx-{{ nginx_version }}
+    state: present
+    update_cache: yes
+
+#setup gunicorn
+- name: Copy gunicorn template
+  ansible.builtin.copy:
+    src: /data/ebc-py3/pizza-backend/run/template/ebc-py3/
+    dest: /data/ebc-py3/pizza-backend/run
+    remote_src: true
+    force: false
+  become_user: '{{ backend_user }}'
+  
+- name: Setup gunicorn start script
+  ansible.builtin.template:
+    src: roles/web/templates/gunicorn_start
+    dest: /data/ebc-py3/pizza-backend/run/gunicorn_start
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    mode: '0755'
+  notify: restart gunicorn
+  tags: 
+    - gunicorn
+
+- name: copy gunicorn service file
+  ansible.builtin.copy:
+    src: roles/web/templates/gunicorn-ebc-py3.service
+    dest: /usr/lib/systemd/system/
+    force: false
+
+- name: reload system daemon
+  ansible.builtin.command: 'systemctl daemon-reload'
+
+- name: gunicorn service enabled
+  service:
+    name: 'gunicorn-ebc-py3.service'
+    enabled: yes
+
+- name: gunicorn service running
+  service:
+    name: 'gunicorn-ebc-py3.service'
+    state: started    
+
+#Setup Nginx
+- name: create nginx logs directory
+  file:
+    path: '/data/ebc-py3/logs'
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    state: directory
+    mode: 0650
+
+- name: Create nginx-ebc logroate conf
+  ansible.builtin.template:
+    src: roles/web/templates/nginx-ebc-py3-logrotate-conf
+    dest: /etc/logrotate.d/nginx-ebc-py3
+    mode: '0644'
+  tags: 
+    - logrotate
+
+- name: Create logrotate daily cron
+  ansible.builtin.template:
+    src: roles/web/templates/logrotate-cron
+    dest: /etc/cron.daily/logrotate
+    mode: '0700'
+  tags: 
+    - logrotate
+
+- name: allow logrotate through SElinux
+  ansible.builtin.command: 'semanage permissive -a logrotate_t' 
+  tags: 
+    - logrotate
+
+- name: Setup nginx conf
+  ansible.builtin.template:
+    src: roles/web/templates/nginx-ebc-py3.conf
+    dest: /data/ebc-py3/pizza-backend/run/nginx-ebc-py3.conf
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    mode: '0644'
+  notify: reload nginx
+  tags: 
+    - nginx  
+    
+- name: copy nginx service file
+  ansible.builtin.copy:
+    src: roles/web/templates/nginx-ebc-py3.service
+    dest: /usr/lib/systemd/system/
+    force: false
+
+- name: reload system daemon
+  ansible.builtin.command: 'systemctl daemon-reload'    
+
+- name: nginx service enabled
+  service:
+    name: 'nginx-ebc-py3.service'
+    enabled: yes
+
+#allow gunicorn and nginx through SElinux and start nginx
+- name: allow gunicorn through SElinux
+  ansible.builtin.command: 'semanage permissive -a init_t'
+
+- name: allow nginx through SElinux
+  ansible.builtin.command: 'semanage permissive -a httpd_t'  
+
+- name: nginx service running
+  service:
+    name: 'nginx-ebc-py3.service'
+    state: started   

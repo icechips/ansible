@@ -1,0 +1,16 @@
+#pizza playbook\
+- name: pizza Web Server
+  hosts: all
+  roles:
+  - role: common_utilities
+    tags:
+    - common
+  - role: backend
+    tags:
+    - backend
+  - role: frontend
+    tags:
+    - frontend
+  - role: web
+    tags:
+    - web

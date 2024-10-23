@@ -1,0 +1,58 @@
+- name: Add kendo env var
+  lineinfile:
+    path: "/etc/environment"
+    state: present
+    line: "KENDO_UI_LICENSE={{ kendo_ui_license }}"
+
+#INstall NVM and NODE
+- name: Install nvm
+  ansible.builtin.shell: >
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+  args:
+    creates: "/data/ebackenduser/.nvm/nvm.sh"
+  become_user: '{{ backend_user }}'
+
+- name: Install node
+  ansible.builtin.shell: 'source /data/ebackenduser/.nvm/nvm.sh && nvm install {{ node_version }}'   
+  become_user: '{{ backend_user }}' 
+
+#Clone and run REACT App
+- name: Download pizza frontend repository
+  ansible.builtin.git:
+    repo: git@github.com-pizza-frontend:Pizza/pizza-frontend.git
+    dest: /data/ebc-py3/pizza-frontend
+    single_branch: yes
+    version: '{{ pizza_frontend_repo_branch }}'
+  become_user: '{{ backend_user }}'  
+
+- name: npm install
+  ansible.builtin.shell: 'source /data/ebackenduser/.nvm/nvm.sh && npm install --ignore-scripts'
+  become_user: '{{ backend_user }}'
+  args:
+    chdir: /data/ebc-py3/pizza-frontend
+
+- name: copy kendo license     
+  ansible.builtin.template:
+    src: roles/frontend/templates/kendo-ui-license
+    dest: /data/ebc-py3/pizza-frontend/kendo-ui-license.txt
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    mode: '0644'
+
+- name: npx install
+  ansible.builtin.shell: 'source /data/ebackenduser/.nvm/nvm.sh && npx gulp install'
+  become_user: '{{ backend_user }}'
+  args:
+    chdir: /data/ebc-py3/pizza-frontend/node_modules/fomantic-ui 
+    
+- name: npx iicense activation
+  ansible.builtin.shell: 'source /data/ebackenduser/.nvm/nvm.sh && npx kendo-ui-license activate'
+  become_user: '{{ backend_user }}'
+  args:
+    chdir: /data/ebc-py3/pizza-frontend   
+
+- name: npm build
+  ansible.builtin.shell: 'source /data/ebackenduser/.nvm/nvm.sh && npm run build'
+  become_user: '{{ backend_user }}'
+  args:
+    chdir: /data/ebc-py3/pizza-frontend    

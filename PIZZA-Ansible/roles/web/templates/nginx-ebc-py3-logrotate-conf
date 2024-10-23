@@ -1,0 +1,20 @@
+/data/ebc-py3/logs/*.log {
+        daily
+        missingok
+        rotate 30
+        compress
+        delaycompress
+        notifempty
+        create 644 root root
+        sharedscripts
+        postrotate
+                if  /sbin/service nginx-ebc-py3 status > /dev/null ; then \
+                         /sbin/service nginx-ebc-py3 reload > /dev/null; \
+                fi;
+        endscript
+        prerotate
+                if [ -d /etc/logrotate.d/nginx-ebc-py3-prerotate ]; then \
+                        run-parts /etc/logrotate.d/nginx-ebc-py3-prerotate; \
+                fi; \
+        endscript
+}

@@ -1,0 +1,14 @@
+[pizza:children]
+pizza_dev
+pizza_uat
+pizza_production
+
+[pizza_dev]
+pizza-dev-web-1 ansible_ssh_host=i-01febc817 ansible_user=ec2-user
+
+[pizza_uat]
+pizza-uat-web-1 ansible_ssh_host=i-092eb2ffb3 ansible_user=ec2-user
+
+[pizza_production]
+pizza-prod-web-1 ansible_ssh_host=i-01320d4d80 ansible_user=ec2-user
+pizza-prod-web-2 ansible_ssh_host=i-0bf837701b ansible_user=ec2-user

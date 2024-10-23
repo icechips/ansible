@@ -1,0 +1,17 @@
+Host github.com-pizza-backend
+    Hostname ssh.github.com
+    Port 443
+    User git
+    IdentityFile=/data/ebackenduser/.ssh/id_ssh_rsa_backend
+
+Host github.com-pizza-eav
+    Hostname ssh.github.com
+    Port 443
+    User git
+    IdentityFile=/data/ebackenduser/.ssh/id_ssh_rsa_eav
+
+Host github.com-pizza-frontend
+    Hostname ssh.github.com
+    Port 443
+    User git
+    IdentityFile=/data/ebackenduser/.ssh/id_ssh_rsa_frontend

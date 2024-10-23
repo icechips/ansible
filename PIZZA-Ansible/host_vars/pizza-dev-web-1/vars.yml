@@ -1,0 +1,2 @@
+hostname: 'pizza-dev-web-1'
+ansible_host: '{{ hostname }}'

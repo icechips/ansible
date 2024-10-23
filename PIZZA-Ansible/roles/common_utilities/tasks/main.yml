@@ -1,0 +1,29 @@
+#enable EPEL and codeready-builder repos
+- name: Enable codeready-builder repo
+  ansible.builtin.command: 'dnf config-manager --set-enabled codeready-builder-for-rhel-9-rhui-rpms'
+
+- name: Install EPEL repo
+  ansible.builtin.command: 'dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' 
+  
+- name: Enable EPEL repo
+  ansible.builtin.command: 'dnf config-manager --set-enabled epel'  
+
+- name: Install common packages
+  yum:
+    name: 
+      - git
+      - pkg-config
+      - gcc
+      - g++
+      - libffi-devel
+      - openssl-devel
+      - cargo
+      - python{{ python_version }}
+      - python{{ python_pip_version }}-pip
+      - python{{ python_version }}-devel
+      #- python{{ python_version }}-PyMySQL
+      #- python{{ python_version }}-PyMySQL+rsa
+      #- python3-mysqlclient
+      - mysql-devel
+    state: present
+    update_cache: yes

@@ -1,0 +1,123 @@
+#Create the user for gunicorn scripts
+- name: create backend group
+  group:
+    name: '{{ backend_group }}'
+    state: present   
+
+- name: create backend user
+  user:
+    name: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    home: /data/ebackenduser
+    shell: /bin/bash
+    generate_ssh_key: true
+    ssh_key_type: "rsa"
+    ssh_key_bits: 4098
+    ssh_key_comment: '{{ backend_user }}'
+    system: true
+    state: present
+
+#create ssh key for each pizza repo
+- name: Create ssh key for pizza backend repository 
+  openssh_keypair:
+    path: /data/ebackenduser/.ssh/id_ssh_rsa_backend 
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+
+- name: Create ssh key for pizza eav repository 
+  openssh_keypair:
+    path: /data/ebackenduser/.ssh/id_ssh_rsa_eav 
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+
+- name: Create ssh key for pizza frontend repository 
+  openssh_keypair:
+    path: /data/ebackenduser/.ssh/id_ssh_rsa_frontend 
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}' 
+
+#create ssh config for git
+- name: create ssh config file
+  ansible.builtin.template:
+    src: roles/backend/templates/ssh-config
+    dest: /data/ebackenduser/.ssh/config
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    mode: '0644'
+
+- name: Upgrade pip
+  ansible.builtin.command: 'python{{ python_pip_version }} -m pip install --upgrade pip'
+  become_user: '{{ backend_user }}'
+
+- name: Install pip virtual env
+  ansible.builtin.command: 'python{{ python_pip_version }} -m pip install virtualenv'
+  become_user: '{{ backend_user }}'
+
+#Backend App Setup
+- name: create dir for python working directory
+  file:
+    path: /data/ebc-py3
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    state: directory
+    mode: 0755
+
+- name: Start Python virtual env 
+  ansible.builtin.command: 'python{{ python_pip_version }} -m virtualenv venv'  
+  become_user: '{{ backend_user }}'
+  args:
+    chdir: /data/ebc-py3    
+
+#the first ever git clone is run manually on the server, to accept the ssh fingerprint prompt
+- name: Download pizza backend repository
+  ansible.builtin.git:
+    repo: git@github.com-pizza-backend:Pizza/pizza-backend.git
+    dest: /data/ebc-py3/pizza-backend
+    single_branch: yes
+    version: '{{ pizza_backend_repo_branch }}' 
+  become_user: '{{ backend_user }}'  
+
+- name: Download pizza eav repository
+  ansible.builtin.git:
+    repo: git@github.com-pizza-eav:Pizza/pizza-eav.git
+    dest: /data/ebc-py3/pizza-eav
+    single_branch: yes
+    version: '{{ pizza_eav_repo_branch }}'
+  become_user: '{{ backend_user }}'
+
+- name: Link backend and eav repos
+  ansible.builtin.file:
+    src: /data/ebc-py3/pizza-eav/eav
+    dest: /data/ebc-py3/pizza-backend/eav
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    state: link 
+  become_user: '{{ backend_user }}' 
+  
+#create settings.py file
+- name: create settings.py file
+  ansible.builtin.template:
+    src: roles/backend/templates/settings.py
+    dest: /data/ebc-py3/pizza-backend/ebackendproject/settings.py
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    mode: '0644'
+  notify: restart gunicorn
+  tags: 
+    - gunicorn      
+
+#Install PIP packahes
+- name: create pip build script
+  ansible.builtin.template:
+    src: roles/backend/templates/build_pip.sh
+    dest: /data/ebc-py3/pizza-backend/build_pip.sh
+    owner: '{{ backend_user }}'
+    group: '{{ backend_group }}'
+    mode: '0744'
+
+- name: Execute pip build script
+  ansible.builtin.shell: './build_pip.sh >> /data/ebackenduser/build_pip_log.txt'
+  become_user: '{{ backend_user }}'
+  args:
+    chdir: /data/ebc-py3/pizza-backend    
+    

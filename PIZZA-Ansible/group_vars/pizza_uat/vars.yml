@@ -1,0 +1,21 @@
+python_version: 3.12
+python_pip_version: 3.12
+node_version: 20.15.0
+nginx_version: 1.20.1
+
+pizza_backend_repo_branch: test_aws
+pizza_eav_repo_branch: test_aws
+pizza_frontend_repo_branch: test_aws
+
+kendo_ui_license: "{{ lookup('amazon.aws.aws_secret', 'kendo-ui-license.key', region='ca-central-1', nested=True) }}"
+django_secret_key: "{{ lookup('amazon.aws.aws_secret', 'Django-key.key', region='ca-central-1', nested=True) }}"
+
+pizza_site_domain: 'uat.pizza.ca'
+gunicorn_debug: True 
+
+ebackend_db_host: 'pizza-uat-pizza-database-cluster.cluster-c9meiuo2ic39.ca-central-1.rds.amazonaws.com'
+ebackend_db_name: 'ebackenddb'
+ebackend_db_user: "{{ lookup('amazon.aws.aws_secret', 'rds!cluster-a06bdf4a-f584-485d-9faf-7e958bd374ff.username', region='ca-central-1', nested=True) }}"  
+ebackend_db_password: "{{ lookup('amazon.aws.aws_secret', 'rds!cluster-a06bdf4a-f584-485d-9faf-7e958bd374ff.password', region='ca-central-1', nested=True) }}"
+
+mail_relayhost: "smtp.pizza.ca"

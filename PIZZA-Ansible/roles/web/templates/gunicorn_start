@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Set variables
+EBCDIR=/data/ebc-py3
+
+DJANGODIR=${EBCDIR}/pizza-backend                        # Django project directory
+SOCKFILE=${DJANGODIR}/run/gunicorn.sock                 # we will communicte using this unix socket
+VENVDIR=${EBCDIR}/venv
+
+export DJANGO_SECRET_KEY='{{ django_secret_key }}'
+export MYSQL_KEY='{{ ebackend_db_password }}'
+
+NAME="ebackendprojapp"                                  # Name of the application
+USER=ebackenduser                                       # the user to run as
+GROUP=webapp                                            # the group to run as
+NUM_WORKERS=9                                           # how many worker processes should Gunicorn spawn
+DJANGO_SETTINGS_MODULE=ebackendproject.settings         # which settings file should Django use
+DJANGO_WSGI_MODULE=ebackendproject.wsgi                 # WSGI module name
+
+echo "Starting $NAME as `whoami`"
+
+# Activate the virtual environment
+cd $DJANGODIR
+source ${VENVDIR}/bin/activate
+export DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE
+export PYTHONPATH=$DJANGODIR:$PYTHONPATH
+
+# Create the run directory if it doesn't exist
+RUNDIR=$(dirname $SOCKFILE)
+test -d $RUNDIR || mkdir -p $RUNDIR
+
+# Start your Django Unicorn
+# Programs meant to be run under supervisor should not daemonize themselves (do not use --daemon)
+exec ${VENVDIR}/bin/gunicorn ${DJANGO_WSGI_MODULE}:application \
+  --name $NAME \
+  --workers $NUM_WORKERS \
+  --user=$USER --group=$GROUP \
+  --bind=unix:$SOCKFILE \

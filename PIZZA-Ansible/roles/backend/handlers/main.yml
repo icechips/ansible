@@ -1,0 +1,4 @@
+- name: restart gunicorn
+  service:
+    name: 'gunicorn-ebc-py3.service'
+    state: restarted

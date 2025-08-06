@@ -1,0 +1,83 @@
+---
+- name: Sleep to allow nodes to settle
+  ansible.builtin.pause:
+    seconds: 120
+
+# verify force and jedi is running
+- name: Verify services
+  block:
+    - name: Return force status
+      ansible.builtin.systemd_service:
+        name: force.service
+      register: force_status
+
+    - name: Force fail message
+      when: force_status.status.SubState != "running"
+      ansible.builtin.fail:
+        msg: "Error: Force service is not running!"
+
+    - name: Return jedi status
+      ansible.builtin.systemd_service:
+        name: jedi.service
+      register: jedi_status
+
+    - name: jedi fail message
+      when: jedi_status.status.SubState != "running"
+      ansible.builtin.fail:
+        msg: "Error: jedi service is not running!"
+
+# check jedi status endpoint
+- name: Check jedi status endpoint
+  block:
+    - name: Query status endpoint
+      ansible.builtin.uri:
+        url: "http://localhost:26657/status"
+        method: GET
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: json
+        validate_certs: false
+      register: jedi_status_endpoint
+      ignore_errors: true
+
+    - name: Status endpoint fail message
+      when: jedi_status_endpoint.status != 200
+      ansible.builtin.fail:
+        msg: "Error: Failed to query jedi status endpoint!"
+
+# check force for lightsaber count increasing
+- name: Check lightsaber count increasing
+  block:
+    - name: Grab starting lightsaber count
+      ansible.builtin.command: "{{ network_homedir }}/bin/force-{{ force_version }} attach --exec lightsaber.countNumber {{ network_homedir }}/force-home/force.ipc"
+      register: starting_lightsaber_count
+
+    - name: Sleep to allow count to increase
+      ansible.builtin.pause:
+        seconds: 15
+
+    - name: Grab ending lightsaber count
+      ansible.builtin.command: "{{ network_homedir }}/bin/force-{{ force_version }} attach --exec lightsaber.countNumber {{ network_homedir }}/force-home/force.ipc"
+      register: ending_lightsaber_count
+
+    - name: Verify lightsaber count is increasing
+      assert:
+        that:
+          - (ending_lightsaber_count.stdout | int) > (starting_lightsaber_count.stdout | int)
+        success_msg: "lightsaber count increasing!"
+        fail_msg: "lightsaber count not increasing!"
+
+# validate that we have freindly planets
+- name: Validate planet count
+  block:
+    - name: Grab planet count
+      ansible.builtin.command: "{{ network_homedir }}/bin/force-{{ force_version }} attach --exec planet.countNumber {{ network_homedir }}/force-home/force.ipc"
+      register: planet_count
+
+    - name: Evaluate planet count
+      assert:
+        that:
+          - (planet_count.stdout | int) > 0
+        success_msg: "{{ ansible_hostname }} currently has {{ planet_count.stdout }} freindly planets!"
+        fail_msg: "{{ ansible_hostname }} does not have any freindly planets!"

@@ -1,4 +1,7 @@
 ---
+- name: Execute any notified handlers before validation
+  meta: flush_handlers
+
 - name: Sleep to allow nodes to settle
   ansible.builtin.pause:
     seconds: 120
